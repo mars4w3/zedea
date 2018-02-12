@@ -41,10 +41,10 @@ importClass('ErrorHandler');
 
 // implementing autoload 
 function importClass($classname) {
- 	__autoload($classname);
+ 	zedea_autoload($classname);
 }
 
-function __autoload($classname) {
+function zedea_autoload($classname) {
  
  	$pathToClass=((_ZEDEA_CLASSPATH_).$classname.'.class.php');	
  
@@ -61,6 +61,10 @@ function __autoload($classname) {
  
  
 }
+
+spl_autoload_register('zedea_autoload');
+
+
 // ---
 
 ?>
