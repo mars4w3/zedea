@@ -3,13 +3,7 @@
 
 class ArrayUtil {
 
-	/**
-	* hasKey 
-	* @author M.Stiewe <mars@4w3.de>	
-	* @param array $array 
-	* @param mixed $key
-	* @return boolean
-	*/
+
 
 	static function hasKey($array=array(),$key='') {
 		if (!is_array($array)) {
@@ -73,13 +67,26 @@ class ArrayUtil {
 	static function setValue(&$array=array(),$key,$value) {
 	 	$array[$key]=$value;
 	}
+
+	static function appendValue(&$array=array(),$key,$value) {
+		if (!isset($array[$key])) {
+			$array[$key] = (is_array($value)) ? array() : '';
+		}
+		if (is_array($value)) {
+			$array[$key] = array_merge($value,$array[$key]);
+		}
+		else {
+			$array[$key].=$value;
+		}
+	}
 	
 	static function unsetKey(&$array=array(),$key) {
 	 	if (isset($array[$key])) {
 	 		unset($array[$key]);
 	 	}
 	}
-	
+
+
 	
 	static function flipKeysValues($array) {
 	 	$out=$array;

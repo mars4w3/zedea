@@ -134,7 +134,7 @@ class Babel {
  	}
 
 
- 	static function registerContext($context,$loadpath,$local=FALSE) {
+ 	static function registerContext($context,$loadpath,$local=FALSE,$import=FALSE) {
  	 	global $_BabelContextCache;
  	 	if (!is_array($_BabelContextCache)) {
  	 	 	Babel::initContextCache();
@@ -146,7 +146,7 @@ class Babel {
  	 	 	
  	 	 	//$path=Loader::getPath('lang',TRUE);
  	 	 	//FileUtil::createDir($path,$context);
- 	 	 	$res= Babel::initLocalStore($context,$loadpath,'lang',$local,TRUE);
+ 	 	 	$res= Babel::initLocalStore($context,$loadpath,'lang',$local,$import);
  	 	 	if ($res) {
 				$local=TRUE;
  	 	 		$loadpath='lang.'.$context;
@@ -163,7 +163,7 @@ class Babel {
 					);  	
  	}
  	
- 	static function initLocalStore($context,$globalpath,$localpath,$waslocal,$import=TRUE) {
+ 	static function initLocalStore($context,$globalpath,$localpath,$waslocal,$import=FALSE) {
  	 	
 		$realGlobalPath	= Loader::getPath($globalpath,$waslocal);
 		$realLocalPath	= Loader::getPath($localpath,TRUE);

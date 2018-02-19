@@ -45,6 +45,12 @@ function importClass($classname) {
 }
 
 function zedea_autoload($classname) {
+
+	if (strstr($classname,'\\')) {
+		// we're not responsible for fully qualified classnames
+		return;
+
+	}
  
  	$pathToClass=((_ZEDEA_CLASSPATH_).$classname.'.class.php');	
  
