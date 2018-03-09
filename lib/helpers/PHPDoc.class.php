@@ -4,14 +4,17 @@ class PHPDoc {
  
  	var $Count		= array();
 	var $Register	= array();
-	var $LogPath	= './';
+	var $Namespaces = array();
+	var $LogPath	= '.';
 	
-	var $loadPath	= './';
-	var $storePath	= './';
+	var $ScanPath	= '.';
+	var $StorePath	= '.';
 	var $DumpData	= FALSE;
 	
 	var $Output='';
 	var $DocumentTitle = '';
+
+	var $Config = array();
 	
 	var $refresh	= FALSE;
 
@@ -19,10 +22,10 @@ class PHPDoc {
 	 	ob_start();
 	 	$this->Count=array(
 		 	'Files'			=> 0,
-		 	'LinesOfCode' 	=> 0,
 		 	'Classes' 		=> 0,
 		 	'Functions' 	=> 0,
-		 	'Chars'			=> 0,
+		 	'LinesOfCode' 	=> 0,
+		 	'Bytes'			=> 0,
 		 
 		 );
 		 
@@ -30,12 +33,59 @@ class PHPDoc {
 		 	'Classes'		=> array(),
 		 	'Methods'		=> array(),
 		 	'Files'			=> array(),
+		 	'Namespaces'	=> array(),
 		 
 		 );
+
 	}
 	
+
+	function loadConfig() {
+		$config = Loader::loadConfig('config','config.php',TRUE,FALSE);
+		$this->Config = $config;
+	}
+
+	function registerNamespaces() {
+
+
+		$namespaces = ArrayUtil::getValue($this->Config,'namespaces',null);
+		if ($namespaces) {
+			foreach ($namespaces as $namespace=>$info) {
+				$pathToIndex = ArrayUtil::getValue($info,'path',null);
+				$scriptName = ArrayUtil::getValue($info,'script','');
+				$index = array();
+				if ($pathToIndex) {
+						$set = array(
+							'path' => $pathToIndex,
+							'scriptName' => $scriptName, 
+						);
+						$this->Namespaces[$namespace]=$set;
+				}
+			}
+		}	
+	}
+
+	function isRegisteredNamespace($namespace) {
+		return (ArrayUtil::hasKey($this->Namespaces,$namespace));
+	}
+
+	function getRegisteredNamespaceIndex($namespace='') {
+	
+		return $this->getOuterIndex($namespace);
+	}
+
+	function getRegisteredNamespaceScriptName($namespace='') {
+		$namespaceInfo =  ArrayUtil::getValue($this->Namespaces,$namespace,array());
+		$script =  ArrayUtil::getValue($namespaceInfo,'scriptName','');
+		return $script;
+	}
+
 	function run() {
 	 
+
+		$this->loadConfig();
+		$this->registerNamespaces();
+
 	 	$cmd=isset($_REQUEST['doc_do']) ? $_REQUEST['doc_do'] : '';
 	 	if ($cmd=='refresh') {
 	 	 	$this->refresh = TRUE;
@@ -52,7 +102,7 @@ class PHPDoc {
 		 	$this->loadIndex($scanFiles);
 		}
 		if ($scanFiles) {	 	
-	 		$this->walkDir('.');
+	 		$this->walkDir($this->ScanPath);
 	 		$this->storeIndex();	
 		}
 
@@ -73,7 +123,7 @@ class PHPDoc {
 
 	function loadIndex(&$reScan) {
 
-		$index=$this->storePath.'docIndex.php';
+		$index=$this->StorePath.'/docIndex.php';
 		if (!file_exists($index)) {
 		 	$reScan=TRUE;
 		 	return FALSE;
@@ -89,10 +139,57 @@ class PHPDoc {
 		return TRUE;
 					 
 	}
+
+	function getOuterIndex($namespace) {
+
+		if (!$this->isRegisteredNamespace($namespace)) {
+			return FALSE;
+		}
+
+		$namespaces = $this->Namespaces;
+		$namespaceInfo = ArrayUtil::getValue($namespaces,$namespace,array());
+
+		$namespaceIndex = ArrayUtil::getValue($namespaceInfo,'index',null);
+		if ($namespaceIndex) {
+			return $namespaceIndex;
+		}
+
+		$namespacePathToIndex = ArrayUtil::getValue($namespaceInfo,'path',null);
+
+		$index = $this->loadOuterIndex($namespacePathToIndex,$namespace);
+		if ($index) {
+			$this->Namespaces[$namespace]['index']= $index;
+			return $index;
+		}
+
+		return FALSE;
+	
+	}
+
+	function loadOuterIndex($path=null,$namespace='') {
+
+		if (!$path) {
+			return;
+		}
+		
+		if (!file_exists($path)) {
+		 	return FALSE;
+		}
+		
+		$file=file_get_contents($path);
+		$raw=base64_decode($file);
+		$data=unserialize($raw);
+		$index=$data['Register'];
+
+		return $index;
+					 
+	}
+
+	
 	
 	
 	function storeIndex() {
-		$index=$this->storePath.'docIndex.php';
+		$index=$this->StorePath.'/docIndex.php';
 		$out=array(
 			'Count' => $this->Count,
 			'Register' => $this->Register,
@@ -140,7 +237,7 @@ class PHPDoc {
 	function parse($path) {
 	 
 	 	$s=filesize($path);
-	 	$this->Count['Chars']+=intval($s);
+	 	$this->Count['Bytes']+=intval($s);
 	 	$f=file($path);
 	 	$this->Count['LinesOfCode']+=intval(count($f));
 	 	$c=implode("\n",$f);
@@ -445,7 +542,7 @@ class PHPDoc {
 	 	$out='<table>';
 	 	$count=$this->Count;
 	 	foreach ($count as $key=>$val) {
-	 	$out.= '<tr><td>'.$key.'</td><td>'.$val.'</td></tr>';
+	 	$out.= '<tr><td>'.$key.'</td><td class="align-right">'.$val.'</td></tr>';
 	 	}
 	 	$out.='<table>';
 	 	
@@ -456,7 +553,8 @@ class PHPDoc {
 	
 	
 	function infoScreen($cmd) {
-	 		 	
+	 	
+	 	$out = '';	 	
 		$out.='<div id="mainmenu">'; 
 	 	$content=$this->getMenu();
 	 	$out.=$content;	
@@ -472,7 +570,7 @@ class PHPDoc {
 	 	$content.='<table>';
 	 	$count=$this->Count;
 	 	foreach ($count as $key=>$val) {
-	 	$content.= '<tr><td>'.$key.'</td><td>'.$val.'</td></tr>';
+	 	$content.= '<tr><td>'.$key.'</td><td class="align-right">'.$val.'</td></tr>';
 	 	}
 	 	$content.='</table>';
 	 	$content.='</div>';
@@ -583,7 +681,7 @@ class PHPDoc {
 			  		<td><a class="afile" href="?doc_do=f&amp;f='.$num.'">'.$file.'</a></td>
 					<td>'.$path.'</td>
 					<td>'.$date.'</td>
-					<td align="right">'.$size.'</td>
+					<td class="align-right">'.$size.'</td>
 				</tr>';
 	 	}
 	 	$out.='</table>';
@@ -648,7 +746,10 @@ class PHPDoc {
 	 	foreach ($array as $num=>$val) {
 	 	 	$out.='<li>';
 	 	 	if (is_array($val)) {
-	 	 	 	if ($level>0) {
+	 	 		if ($num=='..') {
+	 	 			$out.='<span>[ '.$num.' ]</span>';
+	 	 		}
+	 	 	 	else if ($level>0) {
 	 	 	 		$out.='<a class="tree-toggle" href="#"><span>+</span>'.$num.'</a>';
 	 	 	 	}
 	 	 	 	else {
@@ -718,7 +819,7 @@ class PHPDoc {
 	 	$out.='<div class="wrapper table-wrapper">';
 	 	$out.='<table>';
 	 	$out.='<tr>';
-	 	$out.='<td valign="top"  style="width:1%;background-color:#999;text-align:right;color:#fff;">';
+	 	$out.='<td valign="top" class="line-num" style="width:1%;text-align:right;">';
 	 	for ($l=0;$l<$lines;$l++) {
 	 	 	$out.=' <pre>'.($l+1).'</pre>';
 	 	}
@@ -758,10 +859,11 @@ class PHPDoc {
 	 	 	}
 	 	 	// ----
 	 	 	
-	 	 	$line=preg_replace_callback('/([A-Z_]*)\:\:([A-Z_]*)\(/i',array($this,'linkRessources'),$line);
+	 	 	$line=preg_replace_callback('/([\\\\A-Z_]*)\:\:([A-Z_]*)\(/i',array($this,'linkRessources'),$line);
 	 	 	$line=preg_replace_callback('/new([\s]*)([A-Z_]*)\(/i',array($this,'linkConstructors'),$line);
 	 	 	$line=preg_replace_callback('/extends([\s]*)([A-Z_]*)([\s])/i',array($this,'linkExtends'),$line);
 	 	 	$line=preg_replace_callback('/function([\s])*([A-Z_]*)\(/i',array($this,'anchorizeMethods'),$line);
+	 	 	
 	 	 	$out.=' <pre>'.$sol.'&nbsp;'.''.($line).$eol.'</pre>';
 	 	}
 	 	
@@ -773,9 +875,26 @@ class PHPDoc {
 	 	$out.='</table>';
 	 	$out.='</div>';
 	 	
+	 	$out=$this->highlight_php($out);
+
 	 	return $out;
 	}	
 	
+	function highlight_php($string) {
+
+		$find = array('class ','namespace ','extends ', 'var ','return ','switch ','case ','if ','else ','while ','foreach ');
+		$repl = array();
+		foreach ($find as $word) {
+			$repl[]='<em class="phpword">'.$word.'</em>';
+		}
+		$string = str_replace($find,$repl,$string);
+
+		$pattern = '/([\$]+)([A-Z_-]*)/i';
+		$repl = "<em class=\"phpvar\">$1$2</em>";
+		$string = preg_replace($pattern,$repl,$string);
+
+		return $string;
+	}
 
 	function tocMethods($fileindex) {
 	 	
@@ -793,17 +912,59 @@ class PHPDoc {
 	 	return $out;
 	}
 
+
+	function resolveNameSpace($className) {
+
+		$classNamespace= '';
+		$in = $className;
+
+		$classURI = str_replace('\\','.',$className);
+		if (substr($classURI,0,1)=='.') {
+			$classNamespace='_global_';
+			$className = substr($classURI,1);
+		}
+    	if ($lastDot = strrpos($classURI, '.')) {
+    		$classNamespace = substr($classURI, 0, $lastDot);
+
+        	$className = substr($classURI, $lastDot + 1);	
+    	}
+
+    	$out = array(
+    		'namespace' => $classNamespace,
+    		'classname' => $className,
+    		'classuri' => $classURI,
+    		'in' => $in,
+    	);
+   
+
+    	return $out;
+	}
 	
 	function linkRessources($matches) {
 	 	$class=$matches[1];
 	 	$method=$matches[2];
 	 	$out=$matches[0];
+
+	 	//handleNameSpace
+	 	$classInfo = $this->resolveNamespace($class);
+	 	$className = ArrayUtil::getValue($classInfo,'classname','');
+	 	$namespace = ArrayUtil::getValue($classInfo,'namespace','');
 	
-		$linkToClass=$this->getLinkToClass($class); 
+	
+		$linkToClass=$this->getLinkToClass($className); 
 		if ($linkToClass) {	
 		 	$linkToMethod=$linkToClass.'#'.$method;
 	 		$out='<a href="'.$linkToClass.'" class="aclass">'.$class.'</a>::<a href="'.$linkToMethod.'" class="amethod">'.$method.'</a>(';
 	 	}
+	 	else if ($this->isRegisteredNameSpace($namespace)) {
+	 	
+	 		$linkToClass=$this->getLinkToClass($className,$namespace);
+	 		if ($linkToClass) {	
+		 		$linkToMethod=$linkToClass.'#'.$method;
+	 			$out='<a href="'.$linkToClass.'" class="aclass">'.$class.'</a>::<a href="'.$linkToMethod.'" class="amethod">'.$method.'</a>(';
+	 		}
+	 	}
+
 	 	return $out;
 	} 
 	
@@ -846,25 +1007,42 @@ class PHPDoc {
 	}
 	
 	
-	function getClassFromIndex($class) {
+	function getClassFromIndex($class,$namespace='') {
 	 	$reg=$this->Register['Classes'];
+	 	$scriptName = '';
+	 	if (!empty($namespace)) {
+	 		if ($this->isRegisteredNamespace($namespace)) {
+	 			$index = $this->getRegisteredNamespaceIndex($namespace);
+	 			$reg = ArrayUtil::getValue($index,'Classes',array());
+	 			$scriptName = $this->getRegisteredNamespaceScriptName($namespace);
+	 		}
+	 	}
 	 	foreach($reg as $num=>$info) {
 	 	 	if ($class==$info[0]) {
-	 	 	 	return $info;
+	 	 	 	$out = $info;
+	 	 	 	$out['script'] = $scriptName;
+	 	 	 	return $out;
 	 	 	}
 	 	}
 	 	return FALSE;
 	} 
+
+
+ 
 	
-	function getLinkToClass($class) {
-	 	$info=$this->getClassFromIndex($class);
+	function getLinkToClass($class,$namespace='') {
+	 	$info=$this->getClassFromIndex($class,$namespace);
 	 	if (!$info) {
 	 	 	return FALSE;
 	 	}
 	 	$fileindex=$info[1];
-	 	$out='?doc_do=f&amp;f='.$fileindex;
+	 	$scriptName = ArrayUtil::getValue($info,'script','');
+
+	 	$out=$scriptName.'?doc_do=f&amp;f='.$fileindex;
 	 	return $out;
 	}
+
+
 	
 	function out() {
 	 	ob_end_clean();
