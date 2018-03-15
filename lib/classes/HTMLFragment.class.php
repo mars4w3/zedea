@@ -382,9 +382,9 @@ class HTMLFragment extends HTMLDocument {
 	 	}
 		 
 		if (stristr($mime,'image')) {
-		 	$out.='<div class="file-display" style="overflow:auto;">';
+		 	//$out.='<div class="file-display" style="overflow:auto;">';
 	 	 	$out.=HTMLFragment::renderImage($file,$args);
-	 	 	$out.='</div>';
+	 	 	//$out.='</div>';
 	 	 	$out.=HTMLFragment::renderDownloadFile($file);
 	 	}
 	 	
@@ -409,7 +409,7 @@ class HTMLFragment extends HTMLDocument {
 	 	}
 		
 		$attr=ArrayUtil::getValue($args,'attr',array());
-	 	$tag=ArrayUtil::getValue($args,'tag','span');
+	 	$tag=ArrayUtil::getValue($args,'tag','figure');
 	 	$imgwidth=ArrayUtil::getValue($args,'imgwidth',150);
 	 	
 	 	$httppath=trim(FileUtil::getHTTPPath($file));
@@ -419,7 +419,7 @@ class HTMLFragment extends HTMLDocument {
 	 	}
  	 	
 	 	$attrlist=RenderUtil::renderAttrList($attr);
-	 	$out='<'.$tag.' '.$attrlist.' class="image-display">';
+	 	$out='<'.$tag.' '.$attrlist.' class="file-display image-display">';
 	 	$imgTag='<img width="'.$imgwidth.'" style="max-width:'.$imgwidth.'px;height:auto;" src="'.$httppath.'" alt="image"/>';
 	 	
 	 	OverrideUtil::callHooks(__CLASS__,__METHOD__,null,$imgTag);
@@ -455,17 +455,25 @@ class HTMLFragment extends HTMLDocument {
  	 	
  	 	HTMLFragment::setAttr('class',$linkclass,$linkArgs);
  	 	HTMLFragment::setAttr('target','_blank',$linkArgs);
- 	 	$link=HTMLFragment::renderLink($file,$linktitle,$linkArgs);
+
+		$httppath=trim(FileUtil::getHTTPPath($file));
+	 	
+	 	if (empty($httppath)) {
+	 	 	return '';
+	 	}
+
+ 	 	$link=HTMLFragment::renderLink($httppath,$linktitle,$linkArgs);
  	 	
 		$out='';
  	 	//$out.='<div>';
  	 	//$out.='<span title="'.$fname.'">'.$fnamedisp.'</span>';
  	 	//$out.='</div>';
- 	
-		$out.='<div>'.$link.'</div>';
+		//$out.='<div>'.$link.'</div>';
+
+		$out.=$link;
 		
 		$sectArgs=array();
-		HTMLFragment::setAttr('class','file-display',$sectArgs);
+		HTMLFragment::setAttr('class','file-display file-download',$sectArgs);
 		$out=HTMLFragment::renderSection($out,$sectArgs);
 		
 		return $out;

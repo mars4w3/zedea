@@ -286,14 +286,21 @@ class FileUtil {
  	}
  	
  	
- 	static function handleUploads($callback='') {
+ 	static function handleUploads($uploadArgs=array(),$callbackCheckUpload='') {
  	 	$files=RequestUtil::filterParams('FILES');
+ 
  	 	foreach ($files as $file) {
- 	 	 
- 	 	 	if (!empty($callback)) {
- 	 	 	 	call_user_func($callback,$file);
+ 	 	 	
+ 	 	 	$moveUpload = TRUE;
+ 	 	 	if (!empty($callbackCheckUpload)) {
+ 	 	 		if (is_callable($callbackCheckUpload)) {
+ 	 	 	 		$moveUpload = call_user_func($callbackCheckUpload,$file);
+ 	 	 	 	}
  	 	 	}
- 	 		FileUtil::moveUpload($file) ;
+ 	 	 	if ($moveUpload) {
+ 	 	 		FileUtil::moveUpload($file,$uploadArgs) ;	
+ 	 	 	}
+ 	 		
  	 	}
  	 
  	 
@@ -442,7 +449,7 @@ class FileUtil {
 	}
 	
 	
-	static function describeFile($file) {
+	static function describeFile($file,$getAllDetails=FALSE) {
 	 	if (!is_file($file)) {
 	 	 	return FALSE;
 	 	}
@@ -464,7 +471,7 @@ class FileUtil {
 	 	$out['Extension']=ArrayUtil::getValue($pathinfo,'extension','');
 	 	
 		$mimeType=ArrayUtil::getValue($out,'MimeType','');
-		if (strstr($mimeType,'image')) {
+		if (strstr($mimeType,'image') && $getAllDetails ) {
 		 	if (function_exists('getimagesize')) {
 		 	 	$out['ImageSize']=getimagesize($file);
 		 	}
