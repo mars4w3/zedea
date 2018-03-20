@@ -23,10 +23,11 @@ class CastUtil {
  
  	static function isNullOrEmpty($mixed) {
  	 
- 	 	$type=CastUtil::getType($mixed);
  	 	if (is_null($mixed)) {
  	 	 	return TRUE;
  	 	}
+ 	 	$type=CastUtil::getType($mixed);
+ 	 
  	 	switch ($type) {
  	 	 
  	 	 	case 'Integer' : return FALSE;
@@ -131,6 +132,42 @@ class CastUtil {
 	 	if (!$out) {
 	 	 	ErrorHandler::throwDebugMsg(__CLASS__,__METHOD__,'unserialize failed for <i>'.$value.'</i>');
 	 	}
+	 	return $out;
+	 
+	}
+
+
+	static function escapeString($string,$mode='QUOTES',$options=array()) {
+	 
+	 	$out=$string;
+	 	$doReplace = FALSE;
+	 	$find=array();
+	 	$repl=array();
+
+
+	 	switch($mode) {
+	 	 	case 'QUOTES' : 
+			  				$out=str_replace('"','&#34;',$out);
+			  				$find=array('"',"'");
+			  				$repl=array('&#34;','&#39;');
+			  				$doReplace=TRUE;
+							break;
+			default :
+							break;  					
+	 	 
+	 	}
+
+	 	if ($doReplace) {
+	 		$out=str_replace($find,$repl,$out);
+	 	}
+
+	 	$callback = ArrayUtil::getValue($options,'callback','');
+	 	if (!empty($callback)) {
+	 		if (is_callable($callback)) {
+	 			$out = call_user_func($callback,$out);
+	 		}
+	 	}
+
 	 	return $out;
 	 
 	}

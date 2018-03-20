@@ -371,6 +371,29 @@ class ArrayUtil {
 	 
 	}
 	
+
+	static function toJSON($array=array()) {
+
+		
+		if (function_exists('json_encode')) {
+			return json_encode($array);
+		}
+
+		$out = '[';
+		$c=0;
+		foreach($array as $key => $value) 
+		{
+			$out.=($c>0) ? ',' : '';
+			$c++;	
+			$out.='{';
+			$out.='"'.CastUtil::escapeString($key,'QUOTES').'"';
+			$out.=':';
+			$out.=(is_array($value)) ? ArrayUtil::toJSON($value) : '"'.CastUtil::escapeString($value,'QUOTES').'"';	
+			$out.='}';
+		}
+		$out.=']';
+		return $out;
+	}
 	
 	
 	

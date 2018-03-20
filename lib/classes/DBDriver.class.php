@@ -400,7 +400,9 @@ class DBDriver  {
 		$statement.=$compareKeyVal;
 		
 		
-		$result=$this->execute($statement);		
+		$result=$this->execute($statement);	
+
+		return $result;	
 	 
 	}
 	
@@ -436,7 +438,9 @@ class DBDriver  {
 		$statement.=' LIMIT ';
 		$statement.=$limit; 
 		
-		$result=$this->execute($statement);		
+		$result=$this->execute($statement);	
+
+		return $result;	
 	 
 	}
 
@@ -498,7 +502,7 @@ class DBDriver  {
 	 		$dbattr=ArrayUtil::getValue($column,'dbattr',array());
  	 	 	$datatypeattr=ArrayUtil::getValue($column,'datatypeattr',array());
  	 	 	
- 	 	 	$columnName=ArrayUtil::getValue($column,'name','column'.$ct);
+ 	 	 	$columnName=ArrayUtil::getValue($column,'name','column');
  	 	 	if ($addColName) {
  	 	 		$out.=$columnName;
  	 	 	}
